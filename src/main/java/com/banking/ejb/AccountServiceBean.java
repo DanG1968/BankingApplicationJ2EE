@@ -124,4 +124,9 @@ public class AccountServiceBean implements AccountService {
         }
         return "Unknown Account Type";
     }
+
+    @Override
+    public boolean authenticate(String username, String hashedPassword) {
+        return false;
+    }
 }

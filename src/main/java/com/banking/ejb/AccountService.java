@@ -13,4 +13,5 @@ public interface AccountService {
     double getAccountBalance(String accountNumber);
     String getAccountType(String accountNumber);
 
+    boolean authenticate(String username, String hashedPassword);
 }

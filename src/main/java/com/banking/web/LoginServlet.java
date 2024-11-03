@@ -6,26 +6,15 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
+import jakarta.ejb.EJB;
 import java.io.IOException;
 
-@WebServlet("/login")
+//@WebServlet("/login")
 public class LoginServlet extends HttpServlet {
 
+    // Injecting the AccountService EJB
+    @EJB
     private AccountService accountService;
-
-    @Override
-    public void init() throws ServletException {
-        // Initialize the AccountService EJB
-        try {
-            InitialContext ctx = new InitialContext();
-            accountService = (AccountService) ctx.lookup("java:global/BankingApp/AccountServiceBean");
-        } catch (NamingException e) {
-            throw new ServletException("Failed to initialize AccountService", e);
-        }
-    }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {

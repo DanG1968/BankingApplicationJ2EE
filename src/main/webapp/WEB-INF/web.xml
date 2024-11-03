@@ -43,6 +43,11 @@
         <servlet-class>com.banking.web.TransferServlet</servlet-class>
         <load-on-startup>3</load-on-startup>
     </servlet>
+    <servlet>
+        <servlet-name>LogoutServlet</servlet-name>
+        <servlet-class>com.banking.web.LogoutServlet</servlet-class>
+        <load-on-startup>4</load-on-startup>
+    </servlet>
 
     <!-- Servlet Mappings -->
     <servlet-mapping>
@@ -61,6 +66,10 @@
     <servlet-mapping>
         <servlet-name>LoginServlet</servlet-name>
         <url-pattern>/login</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>LogoutServlet</servlet-name>
+        <url-pattern>/logout</url-pattern>
     </servlet-mapping>
     <resource-ref>
         <description>PostgreSQL DataSource</description>

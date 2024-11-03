@@ -1,5 +1,6 @@
 package com.banking.ejb;
 
+import jakarta.ejb.Local;
 import jakarta.ejb.Stateless;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -7,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
 @Stateless
+@Local(AccountService.class) // Specify the local interface
 public class AccountServiceBean implements AccountService {
 
     // Database connection details

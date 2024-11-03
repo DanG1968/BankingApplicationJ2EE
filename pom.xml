@@ -14,7 +14,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.source>17</maven.compiler.source>
-        <junit.version>5.11.0-M2</junit.version>
+        <junit.version>5.9.3</junit.version>
     </properties>
 
     <dependencies>
@@ -36,25 +36,12 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
-        <!-- Java EE API -->
-        <dependency>
-            <groupId>javax</groupId>
-            <artifactId>javaee-api</artifactId>
-            <version>8.0</version>
-            <scope>provided</scope>
-        </dependency>
         <!-- https://mvnrepository.com/artifact/jakarta.servlet/jakarta.servlet-api -->
         <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
             <version>6.0.0</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-            <version>4.0.1</version> <!-- Adjust the version as needed -->
-            <scope>provided</scope> <!-- Use 'provided' because the server supplies this -->
         </dependency>
         <!-- PostgreSQL JDBC Driver -->
         <dependency>
@@ -66,7 +53,7 @@
             <groupId>jakarta.ejb</groupId>
             <artifactId>jakarta.ejb-api</artifactId>
             <version>4.0.0</version>
-            <scope>provided</scope> <!-- Important: Use 'provided' scope -->
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 

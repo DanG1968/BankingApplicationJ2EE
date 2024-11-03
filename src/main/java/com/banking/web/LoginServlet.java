@@ -9,7 +9,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ejb.EJB;
 import java.io.IOException;
 
-//@WebServlet("/login")
+@WebServlet(
+        name = "LoginServlet",
+        urlPatterns = {"/login"},
+        loadOnStartup = 2
+)
 public class LoginServlet extends HttpServlet {
 
     // Injecting the AccountService EJB

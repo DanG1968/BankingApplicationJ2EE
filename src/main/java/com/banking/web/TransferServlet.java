@@ -10,7 +10,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-//@WebServlet("/transferFunds")
+@WebServlet(
+        name = "TransferServlet",
+        urlPatterns = {"/transferFunds"},
+        loadOnStartup = 3
+)
 public class TransferServlet extends HttpServlet {
     private AccountService accountService;
 

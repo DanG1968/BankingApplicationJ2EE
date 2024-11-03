@@ -1,6 +1,6 @@
 package com.banking.ejb;
 
-import javax.ejb.Remote;
+import jakarta.ejb.Remote;
 
 @Remote
 public interface AccountService {

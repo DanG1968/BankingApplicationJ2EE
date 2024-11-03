@@ -3,6 +3,8 @@ package com.banking.web;
 import com.banking.ejb.AccountService;
 
 import javax.naming.InitialContext;
+
+import jakarta.ejb.EJB;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -11,8 +13,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-//@WebServlet("/account")
+@WebServlet(
+        name = "AccountServlet",
+        urlPatterns = {"/createAccount", "/viewAccount"},
+        loadOnStartup = 1
+)
 public class AccountServlet extends HttpServlet {
+
+    @EJB
     private AccountService accountService;
 
     @Override

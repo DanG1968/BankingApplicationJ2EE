@@ -7,8 +7,10 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.logging.Logger;
 
-// WebFilter annotation can also be used instead of web.xml configuration, if needed
-//@WebFilter("/*")
+@WebFilter(
+        filterName = "LoggingFilter",
+        urlPatterns = {"/*"}
+)
 public class LoggingFilter implements Filter {
 
     // Create a Logger instance for logging

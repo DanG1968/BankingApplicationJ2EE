@@ -1,132 +1,163 @@
 package com.banking.ejb;
 
-import jakarta.ejb.Local;
+import com.banking.entity.Account;
 import jakarta.ejb.Stateless;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
 
 @Stateless
-@Local(AccountService.class) // Specify the local interface
 public class AccountServiceBean implements AccountService {
 
-    // Database connection details
-    private static final String DB_URL = "jdbc:postgresql://localhost:5432/banking";
-    private static final String DB_USER = "daniel";
-    private static final String DB_PASSWORD = "s3cret";
+    @PersistenceContext(unitName = "BankingPU")
+    private EntityManager entityManager;
 
-    // Helper method to establish a database connection
-    private Connection getConnection() throws Exception {
-        return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-    }
-
+    /**
+     * Authenticate a user by validating the provided password against the stored hashed password.
+     *
+     * @param accountNumber The account number of the user.
+     * @param password The password provided by the user.
+     * @return true if authentication is successful, false otherwise.
+     */
     @Override
-    public boolean createAccount(String accountNumber, String accountHolder, double initialBalance) {
-        try (Connection conn = getConnection()) {
-            String sql = "INSERT INTO accounts (account_number, account_holder, balance, account_type) VALUES (?, ?, ?, ?)";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, accountNumber);
-            stmt.setString(2, accountHolder);
-            stmt.setDouble(3, initialBalance);
-            stmt.setString(4, "Savings"); // Default account type, modify as needed
-            return stmt.executeUpdate() > 0;
+    public boolean authenticate(String accountNumber, String password) {
+        try {
+            // Retrieve the account from the database using the account number
+            Account account = entityManager.find(Account.class, accountNumber);
+            if (account == null) {
+                return false; // Account not found
+            }
+
+            // Get the stored hashed password and salt from the account
+            String storedHashedPassword = account.getHashedPassword();
+            String salt = account.getSalt();
+
+            // Hash the provided password with the stored salt
+            String hashedPassword = hashPassword(password, salt);
+
+            // Compare the hashed password with the stored hashed password
+            return hashedPassword.equals(storedHashedPassword);
         } catch (Exception e) {
             e.printStackTrace();
-            return false;
+            return false; // Authentication failed due to an error
+        }
+    }
+
+    /**
+     * Hashes a password using SHA-256 and a provided salt.
+     *
+     * @param password The password to be hashed.
+     * @param salt The salt to use in hashing.
+     * @return The hashed password.
+     * @throws NoSuchAlgorithmException If the hashing algorithm is not available.
+     */
+    private String hashPassword(String password, String salt) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        md.update(salt.getBytes());
+        byte[] hashedBytes = md.digest(password.getBytes());
+        return Base64.getEncoder().encodeToString(hashedBytes);
+    }
+
+    /**
+     * Generates a secure random salt for password hashing.
+     *
+     * @return A secure random salt.
+     */
+    public String generateSalt() {
+        SecureRandom sr = new SecureRandom();
+        byte[] salt = new byte[16];
+        sr.nextBytes(salt);
+        return Base64.getEncoder().encodeToString(salt);
+    }
+    @Override
+    public void createAccount(String accountNumber, String password, String accountHolder, String accountType, double initialBalance) {
+        String salt = generateSalt();
+        String hashedPassword = null;
+        try {
+            hashedPassword = hashPassword(password, salt);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error hashing password");
+        }
+
+        Account account = new Account();
+        account.setAccountNumber(accountNumber);
+        account.setHashedPassword(hashedPassword);
+        account.setSalt(salt);
+        account.setAccountHolder(accountHolder);
+        account.setAccountType(accountType);
+        account.setBalance(initialBalance);
+
+        entityManager.persist(account);
+    }
+
+    /**
+     * Updates the balance of an account.
+     *
+     * @param accountNumber The account number.
+     * @param newBalance The new balance to set.
+     */
+    public void updateBalance(String accountNumber, double newBalance) {
+        Account account = entityManager.find(Account.class, accountNumber);
+        if (account != null) {
+            account.setBalance(newBalance);
+            entityManager.merge(account);
         }
     }
 
     @Override
     public boolean transferFunds(String fromAccount, String toAccount, double amount) {
-        try (Connection conn = getConnection()) {
-            conn.setAutoCommit(false);
+        Account sourceAccount = entityManager.find(Account.class, fromAccount);
+        Account destinationAccount = entityManager.find(Account.class, toAccount);
 
-            // Deduct from the sender's account
-            String deductSql = "UPDATE accounts SET balance = balance - ? WHERE account_number = ?";
-            PreparedStatement deductStmt = conn.prepareStatement(deductSql);
-            deductStmt.setDouble(1, amount);
-            deductStmt.setString(2, fromAccount);
-            int rowsUpdated = deductStmt.executeUpdate();
-
-            if (rowsUpdated == 0) {
-                conn.rollback();
-                return false;
-            }
-
-            // Add to the receiver's account
-            String addSql = "UPDATE accounts SET balance = balance + ? WHERE account_number = ?";
-            PreparedStatement addStmt = conn.prepareStatement(addSql);
-            addStmt.setDouble(1, amount);
-            addStmt.setString(2, toAccount);
-            addStmt.executeUpdate();
-
-            conn.commit();
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+        if (sourceAccount == null || destinationAccount == null || sourceAccount.getBalance() < amount) {
+            return false; // Transfer cannot proceed
         }
+
+        // Deduct from source account
+        double newSourceBalance = sourceAccount.getBalance() - amount;
+        updateBalance(fromAccount, newSourceBalance);
+
+        // Add to destination account
+        double newDestinationBalance = destinationAccount.getBalance() + amount;
+        updateBalance(toAccount, newDestinationBalance);
+
+        return true; // Transfer successful
     }
 
-    @Override
-    public double getBalance(String accountNumber) {
-        try (Connection conn = getConnection()) {
-            String sql = "SELECT balance FROM accounts WHERE account_number = ?";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, accountNumber);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getDouble("balance");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return 0.0;
-    }
-
-    // New method to get the account holder's name
-    @Override
+    /**
+     * Retrieves the account holder's name.
+     *
+     * @param accountNumber The account number.
+     * @return The account holder's name, or null if the account does not exist.
+     */
     public String getAccountHolder(String accountNumber) {
-        try (Connection conn = getConnection()) {
-            String sql = "SELECT account_holder FROM accounts WHERE account_number = ?";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, accountNumber);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getString("account_holder");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return "Unknown Account Holder";
+        Account account = entityManager.find(Account.class, accountNumber);
+        return account != null ? account.getAccountHolder() : null;
     }
 
-    // New method to get the account balance
-    @Override
+    /**
+     * Retrieves the account balance.
+     *
+     * @param accountNumber The account number.
+     * @return The account balance, or 0.0 if the account does not exist.
+     */
     public double getAccountBalance(String accountNumber) {
-        return getBalance(accountNumber); // Reuse the existing getBalance method
+        Account account = entityManager.find(Account.class, accountNumber);
+        return account != null ? account.getBalance() : 0.0;
     }
 
-    // New method to get the account type
-    @Override
+    /**
+     * Retrieves the account type.
+     *
+     * @param accountNumber The account number.
+     * @return The account type, or null if the account does not exist.
+     */
     public String getAccountType(String accountNumber) {
-        try (Connection conn = getConnection()) {
-            String sql = "SELECT account_type FROM accounts WHERE account_number = ?";
-            PreparedStatement stmt = conn.prepareStatement(sql);
-            stmt.setString(1, accountNumber);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getString("account_type");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return "Unknown Account Type";
-    }
-
-    @Override
-    public boolean authenticate(String username, String hashedPassword) {
-        return false;
+        Account account = entityManager.find(Account.class, accountNumber);
+        return account != null ? account.getAccountType() : null;
     }
 }

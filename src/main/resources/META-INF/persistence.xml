@@ -3,15 +3,16 @@
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_2.xsd"
              version="3.2">
-    <persistence-unit name="default" transaction-type="JTA">
-        <jta-data-source>jdbc/banking</jta-data-source>
-        <class>com.banking.ejb.AccountServiceBean</class> <!-- Add your entity class if any -->
+    <persistence-unit name="BankingPU" transaction-type="JTA">
+        <jta-data-source>java:/comp/env/jdbc/BankingDB</jta-data-source>
+        <class>com.banking.entity.Account</class>
         <properties>
-            <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
-            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/banking"/>
-            <property name="jakarta.persistence.jdbc.user" value="daniel"/>
-            <property name="jakarta.persistence.jdbc.password" value="s3cret"/>
+            <property name="jakarta.persistence.schema-generation.database.action" value="create" />
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver" />
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/banking" />
+            <property name="jakarta.persistence.jdbc.user" value="your_username" />
+            <property name="jakarta.persistence.jdbc.password" value="your_password" />
+            <property name="jakarta.persistence.logging.level" value="FINE" />
         </properties>
     </persistence-unit>
 </persistence>

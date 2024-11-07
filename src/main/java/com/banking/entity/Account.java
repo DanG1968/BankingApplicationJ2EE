@@ -1,30 +1,43 @@
 package com.banking.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
-@Table(name = "accounts") // Ensure this matches your database table name
+@Table(name = "accounts")
 public class Account {
 
     @Id
-    private String accountNumber; // Primary key
+    @Column(name = "account_number", nullable = false, unique = true)
+    private String accountNumber;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "account_holder", nullable = false)
     private String accountHolder;
-    private double balance;
+
+    @Column(name = "account_type", nullable = false)
     private String accountType;
-    private String hashedPassword;
-    private String salt;
+
+    @Column(name = "balance", nullable = false)
+    private double balance;
 
     // Getters and Setters
-
     public String getAccountNumber() {
         return accountNumber;
     }
 
     public void setAccountNumber(String accountNumber) {
         this.accountNumber = accountNumber;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public String getAccountHolder() {
@@ -35,14 +48,6 @@ public class Account {
         this.accountHolder = accountHolder;
     }
 
-    public double getBalance() {
-        return balance;
-    }
-
-    public void setBalance(double balance) {
-        this.balance = balance;
-    }
-
     public String getAccountType() {
         return accountType;
     }
@@ -51,19 +56,11 @@ public class Account {
         this.accountType = accountType;
     }
 
-    public String getHashedPassword() {
-        return hashedPassword;
+    public double getBalance() {
+        return balance;
     }
 
-    public void setHashedPassword(String hashedPassword) {
-        this.hashedPassword = hashedPassword;
-    }
-
-    public String getSalt() {
-        return salt;
-    }
-
-    public void setSalt(String salt) {
-        this.salt = salt;
+    public void setBalance(double balance) {
+        this.balance = balance;
     }
 }

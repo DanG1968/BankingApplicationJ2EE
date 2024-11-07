@@ -1,110 +1,130 @@
 package com.banking.ejb;
 
 import com.banking.entity.Account;
+import com.banking.entity.User;
+import jakarta.ejb.Remote;
 import jakarta.ejb.Stateless;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import java.security.MessageDigest;
+import jakarta.persistence.Query;
+
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 
 @Stateless
+@Remote(AccountService.class)
 public class AccountServiceBean implements AccountService {
 
     @PersistenceContext(unitName = "BankingPU")
     private EntityManager entityManager;
 
-    /**
-     * Authenticate a user by validating the provided password against the stored hashed password.
-     *
-     * @param accountNumber The account number of the user.
-     * @param password The password provided by the user.
-     * @return true if authentication is successful, false otherwise.
-     */
+    private static final int SALT_LENGTH = 16;
+    private static final int HASH_ITERATIONS = 10000;
+    private static final int HASH_KEY_LENGTH = 256;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     @Override
-    public boolean authenticate(String accountNumber, String password) {
+    public boolean createAccount(String username, String password, String accountHolder, String accountType, double initialBalance) {
+        // Check if the user already exists
+        User user = entityManager.createQuery("SELECT u FROM User u WHERE u.username = :username", User.class)
+                .setParameter("username", username)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+
+        if (user == null) {
+            // If the user does not exist, create a new User entity
+            user = new User();
+            user.setUsername(username);
+
+            byte[] salt = generateSalt();
+            user.setSalt(Base64.getEncoder().encodeToString(salt).getBytes());
+            user.setPassword(hashPassword(password, salt));
+
+            entityManager.persist(user);
+        }
+
+        // Generate unique account number
+        String accountNumber = generateUniqueAccountNumber();
+
+        // Create and persist the Account entity, linking it to the User entity
+        Account newAccount = new Account();
+        newAccount.setAccountNumber(accountNumber);
+        newAccount.setUser(user); // Associate the account with the User
+        newAccount.setAccountHolder(accountHolder);
+        newAccount.setAccountType(accountType);
+        newAccount.setBalance(initialBalance);
+
+        entityManager.persist(newAccount);
+
+        return true;
+    }
+
+
+    private boolean isUsernameExists(String username) {
+        Query query = entityManager.createQuery("SELECT COUNT(u) FROM User u WHERE u.username = :username");
+        query.setParameter("username", username);
+        Long count = (Long) query.getSingleResult();
+        return count > 0;
+    }
+
+    private String generateUniqueAccountNumber() {
+        String accountNumber;
+        do {
+            accountNumber = "AC" + (100000 + RANDOM.nextInt(900000)); // Generates a unique 6-digit random number prefixed with "AC"
+        } while (isAccountNumberExists(accountNumber));
+        return accountNumber;
+    }
+
+    private boolean isAccountNumberExists(String accountNumber) {
+        Query query = entityManager.createQuery("SELECT COUNT(a) FROM Account a WHERE a.accountNumber = :accountNumber");
+        query.setParameter("accountNumber", accountNumber);
+        Long count = (Long) query.getSingleResult();
+        return count > 0;
+    }
+
+    private byte[] generateSalt() {
+        byte[] salt = new byte[SALT_LENGTH];
+        RANDOM.nextBytes(salt);
+        return salt;
+    }
+
+    private String hashPassword(String password, byte[] salt) {
         try {
-            // Retrieve the account from the database using the account number
-            Account account = entityManager.find(Account.class, accountNumber);
-            if (account == null) {
-                return false; // Account not found
+            PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, HASH_ITERATIONS, HASH_KEY_LENGTH);
+            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] hash = factory.generateSecret(spec).getEncoded();
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            throw new RuntimeException("Error hashing password", e);
+        }
+    }
+
+    @Override
+    public boolean authenticate(String username, String password) {
+        try {
+            User user = entityManager.createQuery(
+                            "SELECT u FROM User u WHERE u.username = :username", User.class)
+                    .setParameter("username", username)
+                    .getSingleResult();
+
+            if (user == null) {
+                return false; // User not found
             }
 
-            // Get the stored hashed password and salt from the account
-            String storedHashedPassword = account.getHashedPassword();
-            String salt = account.getSalt();
+            String storedHashedPassword = user.getPassword();
+            byte[] salt = Base64.getDecoder().decode(user.getSalt());
 
-            // Hash the provided password with the stored salt
             String hashedPassword = hashPassword(password, salt);
 
-            // Compare the hashed password with the stored hashed password
             return hashedPassword.equals(storedHashedPassword);
         } catch (Exception e) {
             e.printStackTrace();
-            return false; // Authentication failed due to an error
-        }
-    }
-
-    /**
-     * Hashes a password using SHA-256 and a provided salt.
-     *
-     * @param password The password to be hashed.
-     * @param salt The salt to use in hashing.
-     * @return The hashed password.
-     * @throws NoSuchAlgorithmException If the hashing algorithm is not available.
-     */
-    private String hashPassword(String password, String salt) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        md.update(salt.getBytes());
-        byte[] hashedBytes = md.digest(password.getBytes());
-        return Base64.getEncoder().encodeToString(hashedBytes);
-    }
-
-    /**
-     * Generates a secure random salt for password hashing.
-     *
-     * @return A secure random salt.
-     */
-    public String generateSalt() {
-        SecureRandom sr = new SecureRandom();
-        byte[] salt = new byte[16];
-        sr.nextBytes(salt);
-        return Base64.getEncoder().encodeToString(salt);
-    }
-    @Override
-    public void createAccount(String accountNumber, String password, String accountHolder, String accountType, double initialBalance) {
-        String salt = generateSalt();
-        String hashedPassword = null;
-        try {
-            hashedPassword = hashPassword(password, salt);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error hashing password");
-        }
-
-        Account account = new Account();
-        account.setAccountNumber(accountNumber);
-        account.setHashedPassword(hashedPassword);
-        account.setSalt(salt);
-        account.setAccountHolder(accountHolder);
-        account.setAccountType(accountType);
-        account.setBalance(initialBalance);
-
-        entityManager.persist(account);
-    }
-
-    /**
-     * Updates the balance of an account.
-     *
-     * @param accountNumber The account number.
-     * @param newBalance The new balance to set.
-     */
-    public void updateBalance(String accountNumber, double newBalance) {
-        Account account = entityManager.find(Account.class, accountNumber);
-        if (account != null) {
-            account.setBalance(newBalance);
-            entityManager.merge(account);
+            return false;
         }
     }
 
@@ -117,45 +137,28 @@ public class AccountServiceBean implements AccountService {
             return false; // Transfer cannot proceed
         }
 
-        // Deduct from source account
-        double newSourceBalance = sourceAccount.getBalance() - amount;
-        updateBalance(fromAccount, newSourceBalance);
+        sourceAccount.setBalance(sourceAccount.getBalance() - amount);
+        destinationAccount.setBalance(destinationAccount.getBalance() + amount);
 
-        // Add to destination account
-        double newDestinationBalance = destinationAccount.getBalance() + amount;
-        updateBalance(toAccount, newDestinationBalance);
+        entityManager.merge(sourceAccount);
+        entityManager.merge(destinationAccount);
 
-        return true; // Transfer successful
+        return true;
     }
 
-    /**
-     * Retrieves the account holder's name.
-     *
-     * @param accountNumber The account number.
-     * @return The account holder's name, or null if the account does not exist.
-     */
+    @Override
     public String getAccountHolder(String accountNumber) {
         Account account = entityManager.find(Account.class, accountNumber);
         return account != null ? account.getAccountHolder() : null;
     }
 
-    /**
-     * Retrieves the account balance.
-     *
-     * @param accountNumber The account number.
-     * @return The account balance, or 0.0 if the account does not exist.
-     */
+    @Override
     public double getAccountBalance(String accountNumber) {
         Account account = entityManager.find(Account.class, accountNumber);
         return account != null ? account.getBalance() : 0.0;
     }
 
-    /**
-     * Retrieves the account type.
-     *
-     * @param accountNumber The account number.
-     * @return The account type, or null if the account does not exist.
-     */
+    @Override
     public String getAccountType(String accountNumber) {
         Account account = entityManager.find(Account.class, accountNumber);
         return account != null ? account.getAccountType() : null;

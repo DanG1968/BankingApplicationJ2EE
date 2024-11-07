@@ -6,6 +6,7 @@
     <persistence-unit name="BankingPU" transaction-type="JTA">
         <jta-data-source>java:/comp/env/jdbc/BankingDB</jta-data-source>
         <class>com.banking.entity.Account</class>
+        <class>com.banking.entity.User</class>
         <properties>
             <property name="jakarta.persistence.schema-generation.database.action" value="create" />
             <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver" />

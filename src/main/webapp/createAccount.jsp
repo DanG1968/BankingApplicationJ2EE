@@ -1,75 +1,48 @@
-<%--
-  Created by IntelliJ IDEA.
-  User: daniel-grindstaff
-  Date: 11/2/24
-  Time: 11:45 PM
-  To change this template use File | Settings | File Templates.
---%>
-<%@ page language="java" contentType="text/html; charset=ISO-8859-1" pageEncoding="ISO-8859-1"%>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Create Account</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f7f7f7;
-      padding: 20px;
-    }
-    .container {
-      max-width: 400px;
-      margin: 0 auto;
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    h2 {
-      text-align: center;
-    }
-    label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
-    }
-    input[type="text"], input[type="email"], input[type="number"] {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    input[type="submit"] {
-      width: 100%;
-      padding: 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    input[type="submit"]:hover {
-      background-color: #45a049;
-    }
-  </style>
 </head>
 <body>
-<div class="container">
-  <h2>Create Account</h2>
-  <form action="/createAccount" method="post">
-    <label for="accountName">Account Name:</label>
-    <input type="text" id="accountName" name="accountName" required>
+<h2>Create a New Account</h2>
 
-    <label for="email">Email:</label>
-    <input type="email" id="email" name="email" required>
+<form action="createAccount" method="post">
+  <label for="username">Username:</label>
+  <input type="text" id="username" name="username" required>
+  <br><br>
 
-    <label for="initialDeposit">Initial Deposit:</label>
-    <input type="number" id="initialDeposit" name="initialDeposit" required min="0">
+  <label for="password">Password:</label>
+  <input type="password" id="password" name="password" required>
+  <br><br>
 
-    <input type="submit" value="Create Account">
-  </form>
-</div>
+  <label for="accountHolder">Account Holder Name:</label>
+  <input type="text" id="accountHolder" name="accountHolder" required>
+  <br><br>
+
+  <label for="accountType">Account Type:</label>
+  <select name="accountType" id="accountType" required>
+    <option value="Savings">Savings</option>
+    <option value="Checking">Checking</option>
+    <option value="Business">Business</option>
+  </select>
+  <br><br>
+
+  <label for="initialBalance">Initial Balance:</label>
+  <input type="number" step="0.01" id="initialBalance" name="initialBalance" required>
+  <br><br>
+
+  <button type="submit">Create Account</button>
+</form>
+
+<% if (request.getAttribute("errorMessage") != null) { %>
+<p style="color:red;"><%= request.getAttribute("errorMessage") %></p>
+<% } %>
+
+<% if (request.getAttribute("successMessage") != null) { %>
+<p style="color:green;"><%= request.getAttribute("successMessage") %></p>
+<% } %>
+
 </body>
 </html>
-
